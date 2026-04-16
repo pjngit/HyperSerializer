@@ -1,17 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-    <LangVersion>latest</LangVersion>
-    <TargetFrameworks>net9.0;net8.0;net7.0;net6.0</TargetFrameworks>
+		<LangVersion>latest</LangVersion>
+		<TargetFramework>net10.0</TargetFramework>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-		<Authors>Adam Cohen</Authors>
-		<Company>Hyperlnq</Company>
-		<Product>HyperSerializer</Product>
-		<Copyright>2025</Copyright>
-		<Description>The fastest dotnet binary serializer known to Git-kind.  Up to 18 times faster than MessagePack and Protobuf with roughly equivelant memory allocation. HyperSerializer uses the Span and Memory managed memory structs to acheive high speed and low memory allocation without unsafe code. HyperSerializer is 100% thread-safe and comes with both sync and async serialization and deserialization methods.</Description>
 		<PackageLicenseFile>License.txt</PackageLicenseFile>
-		<PackageProjectUrl>https://github.com/Hyperlnq/HyperSerializer</PackageProjectUrl>
-		<PackageTags>Fastest;Binary;Serializer;Serialization;High-Performance;Low-Allocation;Span&lt;T&gt;;Memory&lt;T&gt;;dotnet</PackageTags>
 		<SignAssembly>true</SignAssembly>
 		<AssemblyOriginatorKeyFile>HyperSerializer.snk</AssemblyOriginatorKeyFile>
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
@@ -21,19 +14,15 @@
 		<Version>1.6</Version>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryType>git</RepositoryType>
-		<PlatformTarget>AnyCPU</PlatformTarget>
-		<PackageIcon>favicon.png</PackageIcon>
+		<PlatformTarget>x64</PlatformTarget>
 		<LangVersion>latest</LangVersion>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net7.0|AnyCPU'">
-	  <WarningLevel>6</WarningLevel>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net7.0|AnyCPU'">
-	  <WarningLevel>6</WarningLevel>
+		<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+		<Platforms>x64</Platforms>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.9.2" />
+		<PackageReference Include="MessagePack" Version="3.1.4" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />
+		<PackageReference Include="System.Linq.Dynamic.Core" Version="1.7.2" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Include="..\License.txt">
@@ -41,12 +30,8 @@
 			<PackagePath>\</PackagePath>
 		</None>
 		<None Include="..\README.md">
-		  <Pack>True</Pack>
-		  <PackagePath>\</PackagePath>
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
 		</None>
-	  <None Include="favicon.png">
-	    <Pack>True</Pack>
-	    <PackagePath>\</PackagePath>
-	  </None>
 	</ItemGroup>
 </Project>

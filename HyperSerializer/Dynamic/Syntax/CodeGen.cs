@@ -17,36 +17,40 @@ internal static class CodeGen<TSnippets>
 {
     private static TSnippets snippets = new();
     private const BindingFlags _flags = BindingFlags.Instance | BindingFlags.Public;
-    internal static IEnumerable<PortableExecutableReference> GetReferences<T>(MemberTypeInfos<T> infos, bool includeUnsafe = false)
-    {
-        var refPaths = new List<PortableExecutableReference> {
-            MetadataReference.CreateFromFile(FrameworkAssemblyPaths.System),
-            MetadataReference.CreateFromFile(FrameworkAssemblyPaths.System_Console),
-            MetadataReference.CreateFromFile(FrameworkAssemblyPaths.System_Private_CoreLib),
-            MetadataReference.CreateFromFile(FrameworkAssemblyPaths.System_Runtime),
-            MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(T).GetTypeInfo().Assembly.Location),
-        };
-        if (includeUnsafe)
-            refPaths.Add(
-                MetadataReference.CreateFromFile(FrameworkAssemblyPaths.System_Runtime_CompilerServices_Unsafe));
+	internal static IEnumerable<PortableExecutableReference> GetReferences<T>(MemberTypeInfos<T> infos, bool includeUnsafe = false)
+	{
+		var refPaths = new List<PortableExecutableReference> {
+			MetadataReference.CreateFromFile(FrameworkAssemblyPaths.System),
+			MetadataReference.CreateFromFile(FrameworkAssemblyPaths.System_Console),
+			MetadataReference.CreateFromFile(FrameworkAssemblyPaths.System_Private_CoreLib),
+			MetadataReference.CreateFromFile(FrameworkAssemblyPaths.System_Runtime),
+			MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
+			MetadataReference.CreateFromFile(typeof(T).GetTypeInfo().Assembly.Location),
+		};
+		if (includeUnsafe)
+			refPaths.Add(
+				MetadataReference.CreateFromFile(FrameworkAssemblyPaths.System_Runtime_CompilerServices_Unsafe));
 
+		if (!TypeSupport.IsSupportedType<T>())
+		{
+			var assemblyCache = new HashSet<string>();
+			for (int i = 0; i < infos.Length; i++)
+			{
+				if (!TypeSupport.IsSupportedType(infos[i].PropertyType))
+					continue;
+				Type t = default;
+				if ((t = Nullable.GetUnderlyingType(infos[i].PropertyType)) == null)
+					t = infos[i].PropertyType;
 
-
-        if (!TypeSupport.IsSupportedType<T>())
-        {
-	        for(int i = 0; i < infos.Length; i++)
-	        {
-                if (!(TypeSupport.IsSupportedType(infos[i].PropertyType)))
-                    continue;
-                Type t = default;
-                if ((t = Nullable.GetUnderlyingType(infos[i].PropertyType)) == null)
-                    t = infos[i].PropertyType;
-                refPaths.Add(MetadataReference.CreateFromFile(t.Assembly.Location));
-            }
-        }
-        return refPaths;
-    }
+				var assemblyPath = t.Assembly.Location;
+				if (assemblyCache.Add(assemblyPath))
+				{
+					refPaths.Add(MetadataReference.CreateFromFile(assemblyPath));
+				}
+			}
+		}
+		return refPaths;
+	}
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static (string Code, string ClassName) GenerateCode<T>(MemberTypeInfos<T> infos)
@@ -60,52 +64,57 @@ internal static class CodeGen<TSnippets>
             length, serialize, deserialize, TypeSupport.IsSupportedType<T>() ? "default" : "new()"), cTypeName);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static (string, string) Serialize<T>(MemberTypeInfos<T> infos)
-    {
-        var offset = 0;
-        var offsetStr = string.Empty;
-        var sb = new StringBuilder();
-        if (TypeSupport.IsSupportedType<T>())
-            (offset, offsetStr) = GenerateSerializer<T>(sb);
-        else
-        {
-			for(int i = 0; i < infos.Length; i++)
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	internal static (string, string) Serialize<T>(MemberTypeInfos<T> infos)
+	{
+		var offset = 0;
+		var offsetStr = new StringBuilder();
+		var sb = new StringBuilder();
+		if (TypeSupport.IsSupportedType<T>())
+		{
+			(offset, var offsetStrPart) = GenerateSerializer<T>(sb);
+			offsetStr.Append(offsetStrPart);
+		}
+		else
+		{
+			for (int i = 0; i < infos.Length; i++)
 			{
-                if (infos[i].Ignore || !TypeSupport.IsSupportedType(infos[i].PropertyType))
-                    continue;
+				if (infos[i].Ignore || !TypeSupport.IsSupportedType(infos[i].PropertyType))
+					continue;
 
-                var (len, str) = GenerateSerializer<T>(sb, "obj", infos[i]);
-                offset += len;
-                offsetStr += str;
-            }
-        }
-        return ($"{offset}{offsetStr}", sb.ToString());
-    }
+				var (len, str) = GenerateSerializer<T>(sb, "obj", infos[i]);
+				offset += len;
+				offsetStr.Append(str);
+			}
+		}
+		return ($"{offset}{offsetStr}", sb.ToString());
+	}
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static (string, string) Deserialize<T>(MemberTypeInfos<T> infos)
-    {
-        var offset = 0;
-        var offsetStr = string.Empty;
-        var sb = new StringBuilder();
-        if (TypeSupport.IsSupportedType<T>())
-            (offset, offsetStr) = GenerateDeserializer<T>(sb);
-        else
-        {
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	internal static (string, string) Deserialize<T>(MemberTypeInfos<T> infos)
+	{
+		var offset = 0;
+		var offsetStr = new StringBuilder();
+		var sb = new StringBuilder();
+		if (TypeSupport.IsSupportedType<T>())
+		{
+			(offset, var offsetStrPart) = GenerateDeserializer<T>(sb);
+			offsetStr.Append(offsetStrPart);
+		}
+		else
+		{
+			for (int i = 0; i < infos.Length; i++)
+			{
+				if (infos[i].Ignore || !TypeSupport.IsSupportedType(infos[i].PropertyType))
+					continue;
 
-	        for(int i = 0; i < infos.Length; i++)
-	        {
-		        if (infos[i].Ignore || !TypeSupport.IsSupportedType(infos[i].PropertyType))
-			        continue;
-
-                var (len, str) = GenerateDeserializer<T>(sb, "obj", infos[i]);
-                offset += len;
-                offsetStr += str;
-            }
-        }
-        return ($"{offset}{offsetStr}", sb.ToString());
-    }
+				var (len, str) = GenerateDeserializer<T>(sb, "obj", infos[i]);
+				offset += len;
+				offsetStr.Append(str);
+			}
+		}
+		return ($"{offset}{offsetStr}", sb.ToString());
+	}
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static (int, string) GenerateSerializer<T>(StringBuilder sb, string parameterName = "obj", MemberTypeInfo propertyType = null)

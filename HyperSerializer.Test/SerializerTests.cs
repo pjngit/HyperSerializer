@@ -251,7 +251,7 @@ public class SerializerTests : TestBase
 
             var i = 1L << 32;
             Span<byte> buffer = default;
-            MemoryMarshal.Write(buffer, ref i);
+            MemoryMarshal.Write(buffer, in i);
             var deserialize = HyperSerializer<int>.Deserialize(buffer);
         }
         catch (ArgumentOutOfRangeException)
@@ -269,7 +269,7 @@ public class SerializerTests : TestBase
 
             var i = 1L << 32;
             Span<byte> buffer = default;
-            MemoryMarshal.Write(buffer, ref i);
+            MemoryMarshal.Write(buffer, in i);
             var deserialize = HyperSerializer<DateTime>.Deserialize(buffer);
         }
         catch (ArgumentOutOfRangeException)
@@ -286,7 +286,7 @@ public class SerializerTests : TestBase
 
             var i = 1L << 32;
             Span<byte> buffer = default;
-            MemoryMarshal.Write(buffer, ref i);
+            MemoryMarshal.Write(buffer, in i);
             var deserialize = HyperSerializer<short>.Deserialize(buffer);
         }
         catch (ArgumentOutOfRangeException)

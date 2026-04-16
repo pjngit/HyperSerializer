@@ -136,9 +136,13 @@ public partial class Test
 [MemoryPackable]
 public partial class SymbolTick
 {
+    [Key(1), ProtoMember(1)]
     public DateTime Timestamp { get; set; }
+    [Key(2), ProtoMember(2)]
     public double Bid { get; set; }
+    [Key(3), ProtoMember(3)]
     public double Ask { get; set; }
+    [Key(4), ProtoMember(4)]
     public int SymbolId { get; set; }
     [MemoryPackConstructor]
     public SymbolTick()

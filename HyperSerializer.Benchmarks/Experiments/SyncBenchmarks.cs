@@ -32,7 +32,7 @@ namespace HyperSerializer.Benchmarks.Experiments;
 public class SyncBenchmarks
 {
     private Test _test;
-    [Params(1_000_000)]
+    [Params(10_000_000, 100_000_000, 1_000_000_000)]
     public int iterations = 1_000_000;
     [GlobalSetup]
     public void Setup()

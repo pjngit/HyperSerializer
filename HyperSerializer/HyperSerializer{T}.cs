@@ -11,8 +11,6 @@ using HyperSerializer.Dynamic.Syntax.Templates;
 using HyperSerializer.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-#if NET5_0_OR_GREATER
-#endif
 
 namespace Hyper;
 
@@ -73,10 +71,14 @@ public static class HyperSerializer<T>
     /// Serialize <typeparam name="T"></typeparam> to binary async
     /// </summary>
     /// <param name="obj">object or value type to be serialized</param>
-    /// <returns><seealso cref="Span{byte}"/></returns>
+    /// <returns><seealso cref="Memory{byte}"/></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ValueTask<Memory<byte>> SerializeAsync(T obj)
-        => new(Serialize(obj).ToArray());
+    {
+        var span = Serialize(obj);
+        var memory = new Memory<byte>(span.ToArray());
+        return new(memory);
+    }
 
     /// <summary>
     /// Deserialize binary to <typeparam name="T"></typeparam> async
@@ -138,36 +140,39 @@ public static class HyperSerializer<T>
         var result = _compilation.Emit(ms);
         if (!result.Success)
         {
-            var compilationErrors = result.Diagnostics.Where(diagnostic =>
+            var compilationErrors = result.Diagnostics
+                .Where(diagnostic =>
                     diagnostic.IsWarningAsError ||
                     diagnostic.Severity == DiagnosticSeverity.Error)
                 .ToList();
-            if (compilationErrors.Any())
+            if (compilationErrors.Count > 0)
             {
-                var firstError = compilationErrors.First();
+                var firstError = compilationErrors[0];
                 var errorNumber = firstError.Id;
                 var errorDescription = firstError.GetMessage();
                 var firstErrorMessage = $"{errorNumber}: {errorDescription};";
                 var exception = new Exception($"Compilation failed, first error is: {firstErrorMessage}");
-                compilationErrors.ForEach(e => { if (!exception.Data.Contains(e.Id)) exception.Data.Add(e.Id, e.GetMessage()); });
+                foreach (var e in compilationErrors)
+                {
+                    if (!exception.Data.Contains(e.Id))
+                        exception.Data.Add(e.Id, e.GetMessage());
+                }
                 throw exception;
             }
         }
 
         ms.Seek(0, SeekOrigin.Begin);
 #if NET5_0_OR_GREATER
-
-                AssemblyLoadContext context = new CollectibleLoadContext();
-                var generatedAssembly = context.LoadFromStream(ms);
+        AssemblyLoadContext context = new CollectibleLoadContext();
+        var generatedAssembly = context.LoadFromStream(ms);
 #else
         var generatedAssembly = Assembly.Load(ms.ToArray());
-
 #endif
         _proxyType = generatedAssembly.GetType(_proxyTypeName);
 
         Span<byte> buffer = new byte[ms.Length];
         ms.Seek(0, SeekOrigin.Begin);
-        ms.Read(buffer);
+        _ = ms.Read(buffer);
         AppDomain.CurrentDomain.Load(buffer.ToArray());
     }
 }

@@ -166,7 +166,7 @@ public class SerializerTestsAsync : TestBase
                 
             var i = 1L << 32;
             Span<byte> buffer = default;
-            MemoryMarshal.Write(buffer, ref i);
+            MemoryMarshal.Write(buffer, in i);
             var deserialize = HyperSerializer<int>.DeserializeAsync(buffer.ToArray()).GetAwaiter().GetResult();
         }
         catch (ArgumentOutOfRangeException)
@@ -184,7 +184,7 @@ public class SerializerTestsAsync : TestBase
 
             var i = 1L << 32;
             Span<byte> buffer = default;
-            MemoryMarshal.Write(buffer, ref i);
+            MemoryMarshal.Write(buffer, in i);
             var deserialize = HyperSerializer<DateTime>.DeserializeAsync(buffer.ToArray()).GetAwaiter().GetResult();
         }
         catch (ArgumentOutOfRangeException)
@@ -201,7 +201,7 @@ public class SerializerTestsAsync : TestBase
 
             var i = 1L << 32;
             Span<byte> buffer = default;
-            MemoryMarshal.Write(buffer, ref i);
+            MemoryMarshal.Write(buffer, in i);
             var deserialize = HyperSerializer<short>.DeserializeAsync(buffer.ToArray()).GetAwaiter().GetResult();
         }
         catch (ArgumentOutOfRangeException)

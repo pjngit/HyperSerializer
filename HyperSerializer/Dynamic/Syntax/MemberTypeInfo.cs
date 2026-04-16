@@ -15,38 +15,52 @@ internal ref struct MemberTypeInfos<T>
 
     public ref MemberTypeInfo this[int index] => ref this.Members[index];
 
-    public MemberTypeInfos()
-    {
-        var type = typeof(T);
-        var members = type.GetFields(bindingFlags).Cast<MemberInfo>().ToArray();
+	public MemberTypeInfos()
+	{
+		var type = typeof(T);
+		var fields = type.GetFields(bindingFlags);
+		PropertyInfo[] properties = null;
 
-		if(HyperSerializerSettings.SerializeFields)
-			members = members.Concat(type.GetProperties(bindingFlags)).ToArray();
+		if (HyperSerializerSettings.SerializeFields)
+		{
+			properties = type.GetProperties(bindingFlags);
+			this.Length = fields.Length + properties.Length;
+		}
+		else
+		{
+			this.Length = fields.Length;
+		}
 
-        this.Length = members.Length;
+		this.Members = new MemberTypeInfo[this.Length];
+		int memberIndex = 0;
 
-        this.Members = new MemberTypeInfo[members.Length];
+		for (int i = 0; i < fields.Length; i++)
+		{
+			var field = fields[i];
+			this.Members[memberIndex] = new MemberTypeInfo
+			{
+				PropertyType = field.FieldType,
+				Name = field.Name,
+				Ignore = field.IsDefined(typeof(IgnoreDataMemberAttribute))
+			};
+			memberIndex++;
+		}
 
-        for (int i = 0; i < this.Length; i++)
-        {
-	        this.Members[i] = new MemberTypeInfo();
-
-            if (members[i] is FieldInfo field)
-            {
-	            this.Members[i].PropertyType = field.FieldType;
-	            this.Members[i].Name = field.Name;
-	            this.Members[i].Ignore = members[i].IsDefined(typeof(IgnoreDataMemberAttribute));
-                continue;
-            }
-
-            if (members[i] is PropertyInfo property)
-            {
-	            this.Members[i].PropertyType = property.PropertyType;
-	            this.Members[i].Name = property.Name;
-	            this.Members[i].Ignore = members[i].IsDefined(typeof(IgnoreDataMemberAttribute));
-            }
-        }
-    }
+		if (properties != null)
+		{
+			for (int i = 0; i < properties.Length; i++)
+			{
+				var property = properties[i];
+				this.Members[memberIndex] = new MemberTypeInfo
+				{
+					PropertyType = property.PropertyType,
+					Name = property.Name,
+					Ignore = property.IsDefined(typeof(IgnoreDataMemberAttribute))
+				};
+				memberIndex++;
+			}
+		}
+	}
 }
 
 internal class MemberTypeInfo

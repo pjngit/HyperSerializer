@@ -25,8 +25,8 @@ namespace Hyper.Benchmarks.Experiments;
 public class AsyncBenchmarks
 {
     private List<Test> _test;
-    [Params(10_000_000, 100_000_000, 1_000_000_0000)]
-    private int iterations = 1_000_000;
+    [Params(10_000_000, 100_000_000, 1_000_000_000)]
+    public int iterations = 1_000_000;
     public AsyncBenchmarks()
     {
         this._test = new List<Test>(); ;
