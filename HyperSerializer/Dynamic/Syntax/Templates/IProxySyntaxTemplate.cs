@@ -14,6 +14,9 @@ internal interface IProxySyntaxTemplate
     string PropertyTemplateDeserializeVarLenList { get; }
     string PropertyTemplateSerializeListLen { get; }
     string PropertyTemplateSerializeArrLen { get; }
+    string PropertyTemplateSerializeDictLen { get; }
+    string PropertyTemplateSerializeVarLenDict { get; }
+    string PropertyTemplateDeserializeVarLenDict { get; }
     string StringLength { get; }
     string StringLengthSpan { get; }
     string ClassTemplate { get; }

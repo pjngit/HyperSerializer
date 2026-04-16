@@ -24,7 +24,9 @@ internal static class CodeGen<TSnippets>
 			MetadataReference.CreateFromFile(FrameworkAssemblyPaths.System_Console),
 			MetadataReference.CreateFromFile(FrameworkAssemblyPaths.System_Private_CoreLib),
 			MetadataReference.CreateFromFile(FrameworkAssemblyPaths.System_Runtime),
+			MetadataReference.CreateFromFile(FrameworkAssemblyPaths.System_Collections),
 			MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
+			MetadataReference.CreateFromFile(typeof(Dictionary<,>).Assembly.Location),
 			MetadataReference.CreateFromFile(typeof(T).GetTypeInfo().Assembly.Location),
 		};
 		if (includeUnsafe)
@@ -165,6 +167,25 @@ internal static class CodeGen<TSnippets>
             return (offset, offsetStr);
         }
 
+        if (TypeSupport.IsDictionaryType(type))
+        {
+            var genericArgs = type.GetGenericArguments();
+            var keyType = genericArgs[0].FullName.Replace("+", ".");
+            var valueType = genericArgs[1].FullName.Replace("+", ".");
+            var kvPairSize = genericArgs[0].SizeOf() + genericArgs[1].SizeOf();
+
+            //write count
+            sb.AppendFormat(snippets.PropertyTemplateSerializeDictLen, propertyName, fieldName, kvPairSize);
+            offset = typeof(int).SizeOf();
+            sb.AppendLine();
+
+            //write value
+            sb.AppendFormat("if(_{0} > 0){{ foreach(var kvp in {1}) {{ var k = kvp.Key; var v = kvp.Value; MemoryMarshal.Write(bytes.Slice(offset+=offsetWritten, offsetWritten = {2}), in k); MemoryMarshal.Write(bytes.Slice(offset+=offsetWritten, offsetWritten = {3}), in v); }} }}", propertyName, fieldName, genericArgs[0].SizeOf(), genericArgs[1].SizeOf());
+            sb.AppendLine();
+            var offsetStr = $"+({fieldName}?.Count ?? 0)*{kvPairSize}";
+            return (offset, offsetStr);
+        }
+
         Type uType;
         if (type.IsGenericType && (uType = Nullable.GetUnderlyingType(type)) != null)
         {
@@ -231,6 +252,25 @@ internal static class CodeGen<TSnippets>
             var offsetStr = $"+({fieldName}?.Length ?? 0)*Unsafe.SizeOf<{type.GetElementType().FullName}>()";
             return (offset, offsetStr);
         }
+
+        if (TypeSupport.IsDictionaryType(type))
+        {
+            var genericArgs = type.GetGenericArguments();
+            var keyType = genericArgs[0].FullName.Replace("+", ".");
+            var valueType = genericArgs[1].FullName.Replace("+", ".");
+            var kvPairSize = genericArgs[0].SizeOf() + genericArgs[1].SizeOf();
+
+            //write count
+            sb.AppendFormat(snippets.PropertyTemplateDeserializeLocal, propertyName, nameof(Int32), offset = typeof(int).SizeOf());
+            sb.AppendLine();
+
+            //write value
+            sb.AppendFormat("if(_{0} >= 0) {{ var dict = new Dictionary<{1}, {2}>(_{0} / {3}); for(int i = 0; i < _{0}; i += {3}) {{ var k = MemoryMarshal.Read<{1}>(bytes.Slice(offset += offsetWritten, offsetWritten = {4})); var v = MemoryMarshal.Read<{2}>(bytes.Slice(offset += offsetWritten, offsetWritten = {5})); dict.Add(k, v); }} {6} = dict; }} else {6} = null;", propertyName, keyType, valueType, kvPairSize, genericArgs[0].SizeOf(), genericArgs[1].SizeOf(), fieldName);
+            sb.AppendLine();
+            var offsetStr = $"+({fieldName}?.Count ?? 0)*{kvPairSize}";
+            return (offset, offsetStr);
+        }
+
         Type uType = null;
         if (type.IsGenericType && (uType = Nullable.GetUnderlyingType(type)) != null)
         {

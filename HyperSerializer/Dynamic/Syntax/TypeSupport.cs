@@ -21,11 +21,29 @@ internal static class TypeSupport
             case var t when t == typeof(IEnumerable<>) && (t.GenericTypeArguments.FirstOrDefault()?.IsValueType ?? false): return true;
             case var t when t.IsEnum: return true;
             case var t when t.IsPrimitive: return true;
+            case var t when IsDictionaryType(t): return true;
             case var t
                 when Nullable.GetUnderlyingType(t) != null && IsSupportedType(Nullable.GetUnderlyingType(t)):
                 return true;
             default:
                 return false;
         };
+    }
+
+    public static bool IsDictionaryType(Type type)
+    {
+        if (type == null) return false;
+
+        if (type.IsGenericType)
+        {
+            var genericDefinition = type.GetGenericTypeDefinition();
+            if (genericDefinition == typeof(Dictionary<,>))
+            {
+                var args = type.GetGenericArguments();
+                return args.Length == 2 && args[0].IsValueType && args[1].IsValueType;
+            }
+        }
+
+        return false;
     }
 }

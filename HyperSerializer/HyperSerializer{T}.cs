@@ -46,38 +46,34 @@ public static class HyperSerializer<T>
     internal delegate T Deserializer(ReadOnlySpan<byte> bytes);
     internal static Deserializer DeserializeDynamic;
 
-    static HyperSerializer()
-        => Compile();
+    static HyperSerializer() => Compile();
 
     /// <summary>
     /// Serialize <typeparam name="T"></typeparam> to binary non-async
     /// </summary>
     /// <param name="obj">object or value type to be serialized</param>
     /// <returns><seealso cref="Span{byte}"/></returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Span<byte> Serialize(T obj)
-        => SerializeDynamic(obj);
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    public static Span<byte> Serialize(T obj) => SerializeDynamic(obj);
 
     /// <summary>
     /// Deserialize binary to <typeparam name="T"></typeparam> non-async
     /// </summary>
     /// <param name="bytes"><seealso cref="ReadOnlySpan{byte}"/>, <seealso cref="Span{byte}"/> or byte[] to be deserialized</param>
     /// <returns><typeparam name="T"></typeparam></returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static T Deserialize(ReadOnlySpan<byte> bytes)
-        => DeserializeDynamic(bytes);
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    public static T Deserialize(ReadOnlySpan<byte> bytes) => DeserializeDynamic(bytes);
 
     /// <summary>
     /// Serialize <typeparam name="T"></typeparam> to binary async
     /// </summary>
     /// <param name="obj">object or value type to be serialized</param>
     /// <returns><seealso cref="Memory{byte}"/></returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     public static ValueTask<Memory<byte>> SerializeAsync(T obj)
     {
         var span = Serialize(obj);
-        var memory = new Memory<byte>(span.ToArray());
-        return new(memory);
+        return new(new Memory<byte>(span.ToArray()));
     }
 
     /// <summary>
@@ -85,11 +81,10 @@ public static class HyperSerializer<T>
     /// </summary>
     /// <param name="bytes"><seealso cref="ReadOnlyMemory{byte}"/>, <seealso cref="Memory{byte}"/> or byte[] array to be deserialized</param>
     /// <returns><typeparam name="T"></typeparam></returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ValueTask<T> DeserializeAsync(ReadOnlyMemory<byte> bytes)
-        => new(Deserialize(bytes.Span));
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    public static ValueTask<T> DeserializeAsync(ReadOnlyMemory<byte> bytes) => new(Deserialize(bytes.Span));
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     private static void BuildDelegates()
     {
         var infos = _proxyType.GetMethod("Serialize");
@@ -98,39 +93,56 @@ public static class HyperSerializer<T>
         var infod = _proxyType.GetMethod("Deserialize");
         DeserializeDynamic = (Deserializer) infod.CreateDelegate(typeof(Deserializer));
     }
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void Compile()
-    {
-	    var infos = new MemberTypeInfos<T>();
+	[MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+	private static void Compile()
+	{
+		var infos = new MemberTypeInfos<T>();
 
-#if NET8_0
-	    var result = CodeGen<ProxySyntaxTemplate_Net8>.GenerateCode<T>(infos);
-#else
-	    var result = CodeGen<ProxySyntaxTemplate>.GenerateCode<T>(infos);
-#endif
+		CSharpCompilation compilation;
 
-        var syntaxTree = CSharpSyntaxTree.ParseText(result.Code);
-		
+		// Select template based on ArrayPool setting
+		if (HyperSerializerSettings.UseArrayPool)
+		{
+			var result = CodeGen<ProxySyntaxTemplate_Net10_ArrayPool>.GenerateCode<T>(infos);
+			var syntaxTree = CSharpSyntaxTree.ParseText(result.Code);
 
+			compilation = CSharpCompilation.Create(
+					assemblyName: $"ProxyGen.SerializationProxy_{result.ClassName}_{DateTime.Now.ToFileTimeUtc()}")
+				.AddSyntaxTrees(syntaxTree)
+				.WithReferences(CodeGen<ProxySyntaxTemplate_Net10_ArrayPool>.GetReferences<T>(infos, includeUnsafe: true))
+				.WithOptions(new CSharpCompilationOptions(
+					outputKind: OutputKind.DynamicallyLinkedLibrary, 
+					allowUnsafe: true, 
+					optimizationLevel: OptimizationLevel.Release));
 
-        var compilation = CSharpCompilation.Create(
-                assemblyName: $"ProxyGen.SerializationProxy_{result.ClassName}_{DateTime.Now.ToFileTimeUtc()}")
-            .AddSyntaxTrees(syntaxTree)
-            .WithReferences(CodeGen<ProxySyntaxTemplate>.GetReferences<T>(infos, includeUnsafe: true))
-            .WithOptions(new CSharpCompilationOptions(
-                outputKind: OutputKind.DynamicallyLinkedLibrary, 
-                allowUnsafe: true, 
-                optimizationLevel: OptimizationLevel.Release));
+			if (HyperSerializerSettings.WriteProxyToConsoleOutput)
+			{
+				Console.Write(syntaxTree.GetRoot().NormalizeWhitespace().ToFullString());
+			}
+		}
+		else
+		{
+			var result = CodeGen<ProxySyntaxTemplate_Net10>.GenerateCode<T>(infos);
+			var syntaxTree = CSharpSyntaxTree.ParseText(result.Code);
 
-        if (HyperSerializerSettings.WriteProxyToConsoleOutput)
-        {
-	        Console.Write(syntaxTree.GetRoot().NormalizeWhitespace().ToFullString());
-        }
+			compilation = CSharpCompilation.Create(
+					assemblyName: $"ProxyGen.SerializationProxy_{result.ClassName}_{DateTime.Now.ToFileTimeUtc()}")
+				.AddSyntaxTrees(syntaxTree)
+				.WithReferences(CodeGen<ProxySyntaxTemplate_Net10>.GetReferences<T>(infos, includeUnsafe: true))
+				.WithOptions(new CSharpCompilationOptions(
+					outputKind: OutputKind.DynamicallyLinkedLibrary, 
+					allowUnsafe: true, 
+					optimizationLevel: OptimizationLevel.Release));
 
-        Emit(compilation);
+			if (HyperSerializerSettings.WriteProxyToConsoleOutput)
+			{
+				Console.Write(syntaxTree.GetRoot().NormalizeWhitespace().ToFullString());
+			}
+		}
 
-        BuildDelegates();
-    }
+		Emit(compilation);
+		BuildDelegates();
+	}
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void Emit(CSharpCompilation _compilation)
@@ -162,17 +174,9 @@ public static class HyperSerializer<T>
         }
 
         ms.Seek(0, SeekOrigin.Begin);
-#if NET5_0_OR_GREATER
+        var assemblyData = ms.ToArray();
         AssemblyLoadContext context = new CollectibleLoadContext();
-        var generatedAssembly = context.LoadFromStream(ms);
-#else
-        var generatedAssembly = Assembly.Load(ms.ToArray());
-#endif
+        var generatedAssembly = context.LoadFromStream(new MemoryStream(assemblyData));
         _proxyType = generatedAssembly.GetType(_proxyTypeName);
-
-        Span<byte> buffer = new byte[ms.Length];
-        ms.Seek(0, SeekOrigin.Begin);
-        _ = ms.Read(buffer);
-        AppDomain.CurrentDomain.Load(buffer.ToArray());
     }
 }

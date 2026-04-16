@@ -19,8 +19,7 @@ public static class HyperSerializer
     /// <param name="obj">object or value type to be serialized</param>
     /// <returns><seealso cref="Span{byte}"/></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Span<byte> Serialize<T>(T obj)
-        => HyperSerializer<T>.Serialize(obj);
+    public static Span<byte> Serialize<T>(T obj) => HyperSerializer<T>.Serialize(obj);
 
     /// <summary>
     /// Deserialize binary to <typeparam name="T"></typeparam> non-async
@@ -28,8 +27,7 @@ public static class HyperSerializer
     /// <param name="bytes"><seealso cref="ReadOnlySpan{byte}"/>, <seealso cref="Span{byte}"/> or byte[] to be deserialized</param>
     /// <returns><typeparam name="T"></typeparam></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static T Deserialize<T>(ReadOnlySpan<byte> bytes)
-        => HyperSerializer<T>.Deserialize(bytes);
+    public static T Deserialize<T>(ReadOnlySpan<byte> bytes) => HyperSerializer<T>.Deserialize(bytes);
 
     /// <summary>
     /// Serialize <typeparam name="T"></typeparam> to binary async
@@ -37,8 +35,7 @@ public static class HyperSerializer
     /// <param name="obj">object or value type to be serialized</param>
     /// <returns><seealso cref="Span{byte}"/></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ValueTask<Memory<byte>> SerializeAsync<T>(T obj)
-        => HyperSerializer<T>.SerializeAsync(obj);
+    public static ValueTask<Memory<byte>> SerializeAsync<T>(T obj) => HyperSerializer<T>.SerializeAsync(obj);
 
     /// <summary>
     /// Deserialize binary to <typeparam name="T"></typeparam> async
@@ -46,6 +43,5 @@ public static class HyperSerializer
     /// <param name="bytes"><seealso cref="ReadOnlyMemory{byte}"/>, <seealso cref="Memory{byte}"/> or byte[] array to be deserialized</param>
     /// <returns><typeparam name="T"></typeparam></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ValueTask<T> DeserializeAsync<T>(ReadOnlyMemory<byte> bytes)
-        => HyperSerializer<T>.DeserializeAsync(bytes);
+    public static ValueTask<T> DeserializeAsync<T>(ReadOnlyMemory<byte> bytes) => HyperSerializer<T>.DeserializeAsync(bytes);
 }
